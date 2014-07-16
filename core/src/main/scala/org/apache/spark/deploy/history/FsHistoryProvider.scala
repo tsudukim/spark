@@ -117,7 +117,7 @@ private[history] class FsHistoryProvider(conf: SparkConf) extends ApplicationHis
       val logStatus = fs.listStatus(new Path(logDir))
       val logDirs = if (logStatus != null) logStatus.filter(_.isDir).toSeq else Seq[FileStatus]()
       val logInfos = logDirs.filter {
-        dir => fs.isFile(new Path(dir.getPath(), EventLoggingListener.APPLICATION_COMPLETE))
+        dir => true //dir => fs.isFile(new Path(dir.getPath(), EventLoggingListener.APPLICATION_COMPLETE))
       }
 
       val currentApps = Map[String, ApplicationHistoryInfo](
@@ -140,7 +140,7 @@ private[history] class FsHistoryProvider(conf: SparkConf) extends ApplicationHis
         }
       }
 
-      appList = newApps.sortBy { info => -info.endTime }
+      appList = newApps.sortBy { info => (-info.endTime, -info.startTime) }
     } catch {
       case t: Throwable => logError("Exception in checking for event log updates", t)
     }
