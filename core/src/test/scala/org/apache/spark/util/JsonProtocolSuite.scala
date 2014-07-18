@@ -136,10 +136,10 @@ class JsonProtocolSuite extends FunSuite {
 
   test("StageInfo.attemptId backward compatibility") {
     // StageInfo.attemptId was added after 1.1.0.
-    val info = makeStageInfo(1, 0, 2, 3, 4L, 5L)
+    val info = makeStageInfo(1, 11, 2, 3, 4L, 5L)
     assert(info.details.nonEmpty)
     val newJson = JsonProtocol.stageInfoToJson(info)
-    val oldJson = newJson.removeField { case (field, _) => field == "AttemptId" }
+    val oldJson = newJson.removeField { case (field, _) => field == "Attempt ID" }
     val newInfo = JsonProtocol.stageInfoFromJson(oldJson)
     assert(info.name === newInfo.name)
     assert(0 === newInfo.attemptId)
