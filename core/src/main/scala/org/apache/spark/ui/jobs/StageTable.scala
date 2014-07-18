@@ -133,7 +133,6 @@ private[ui] class StageTableBase(
       if (finishTime > t) finishTime - t else System.currentTimeMillis - t
     }
     val formattedDuration = duration.map(d => UIUtils.formatDuration(d)).getOrElse("Unknown")
-<<<<<<< HEAD
 
     val inputRead = stageData.inputBytes
     val inputReadWithUnit = if (inputRead > 0) Utils.bytesToString(inputRead) else ""
