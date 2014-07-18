@@ -182,7 +182,8 @@ private[history] class FsHistoryProvider(conf: SparkConf) extends ApplicationHis
       appListener.startTime,
       appListener.endTime,
       getModificationTime(logDir),
-      appListener.sparkUser)
+      appListener.sparkUser,
+      !fs.isFile(new Path(logDir.getPath(), EventLoggingListener.APPLICATION_COMPLETE)))
 
     if (ui != null) {
       val uiAclsEnabled = conf.getBoolean("spark.history.ui.acls.enable", false)
