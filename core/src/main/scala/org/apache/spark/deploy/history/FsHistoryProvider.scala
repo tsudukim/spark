@@ -115,10 +115,7 @@ private[history] class FsHistoryProvider(conf: SparkConf) extends ApplicationHis
     logDebug("Checking for logs. Time is now %d.".format(lastLogCheckTimeMs))
     try {
       val logStatus = fs.listStatus(new Path(logDir))
-      val logDirs = if (logStatus != null) logStatus.filter(_.isDir).toSeq else Seq[FileStatus]()
-      val logInfos = logDirs.filter {
-        dir => true //dir => fs.isFile(new Path(dir.getPath(), EventLoggingListener.APPLICATION_COMPLETE))
-      }
+      val logInfos = if (logStatus != null) logStatus.filter(_.isDir).toSeq else Seq[FileStatus]()
 
       val currentApps = Map[String, ApplicationHistoryInfo](
         appList.map(app => (app.id -> app)):_*)
