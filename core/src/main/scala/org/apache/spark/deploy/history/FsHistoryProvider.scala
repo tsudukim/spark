@@ -140,7 +140,7 @@ private[history] class FsHistoryProvider(conf: SparkConf) extends ApplicationHis
         }
       }
 
-      appList = newApps.sortBy { info => (-info.endTime, -info.startTime) }
+      appList = newApps.sortBy { info => -info.startTime }
     } catch {
       case t: Throwable => logError("Exception in checking for event log updates", t)
     }
