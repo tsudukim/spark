@@ -40,15 +40,49 @@ for %%d in ("%FWDIR%assembly\target\scala-%SCALA_VERSION%\spark-assembly*hadoop*
 if [%FOUND_JAR%] == [0] (
   echo Failed to find Spark assembly JAR.
   echo You need to build Spark before running this program.
-  goto exit
+  exit /b 1
 )
 :skip_build_test
 
 rem Load environment variables from conf\spark-env.cmd, if it exists
 if exist "%FWDIR%conf\spark-env.cmd" call "%FWDIR%conf\spark-env.cmd"
 
-rem Figure out which Python to use.
-if [%PYSPARK_PYTHON%] == [] set PYSPARK_PYTHON=python
+rem Users should set environment variable PYTHON_PATH or IPYTHON_PATH
+rem before call pyspark.cmd if python or ipython is not in the %PATH%.
+if [%PYTHON_PATH%] == [] set PYTHON_PATH=python
+if [%IPYTHON_PATH%] == [] set IPYTHON_PATH=ipython
+
+rem Determine the Python executable to use in default.
+set DEFAULT_PYTHON=%PYTHON_PATH%
+
+rem Determine the Python executable to use for the driver:
+if [%IPYTHON_OPTS%] == [] if not "%IPYTHON%" == "1" (
+  if [%PYSPARK_PYTHON%] == [] (
+    set PYSPARK_DRIVER_PYTHON=%PYSPARK_PYTHON%
+  ) else (
+    set PYSPARK_DRIVER_PYTHON=%DEFAULT_PYTHON%
+) else (
+  set PYSPARK_DRIVER_PYTHON_OPTS=%PYSPARK_DRIVER_PYTHON_OPTS% %IPYTHON_OPTS%
+)
+
+rem Determine the Python executable to use for the executors:
+if [%PYSPARK_PYTHON%] == [] (
+  echo %PYSPARK_DRIVER_PYTHON% | findstr "ipython" >/nul
+  if %ERRORLEVEL% equ 0 (
+    rem In Windows version
+    echo "IPython requires Python 2.7+; please install python2.7 or set PYSPARK_PYTHON" 1>&2
+  )
+  set PYSPARK_PYTHON=%DEFAULT_PYTHON%
+)
+if [[ -z "$PYSPARK_PYTHON" ]]; then
+  if [[ $PYSPARK_DRIVER_PYTHON == *ipython* && $DEFAULT_PYTHON != "python2.7" ]]; then
+    echo "IPython requires Python 2.7+; please install python2.7 or set PYSPARK_PYTHON" 1>&2
+    exit 1
+  else
+    PYSPARK_PYTHON="$DEFAULT_PYTHON"
+  fi
+fi
+export PYSPARK_PYTHON
 
 set PYTHONPATH=%FWDIR%python;%PYTHONPATH%
 set PYTHONPATH=%FWDIR%python\lib\py4j-0.8.2.1-src.zip;%PYTHONPATH%
@@ -67,9 +101,9 @@ if not [%SPARK_TESTING%] == [] (
   set YARN_CONF_DIR=
   set HADOOP_CONF_DIR=
   if not [%PYSPARK_DOC_TEST%] == [] (
-    %PYSPARK_PYTHON% -m doctest %1
+    %PYSPARK_DRIVER_PYTHON% -m doctest %1
   ) else (
-    %PYSPARK_PYTHON% %1
+    %PYSPARK_DRIVER_PYTHON% %1
   )
   exit /b 0
 )
@@ -84,7 +118,7 @@ for /f %%i in ('echo %1^| findstr /R "\.py"') do (
 
 if [%PYTHON_FILE%] == [] (
   set PYSPARK_SHELL=1
-  %PYSPARK_PYTHON%
+  %PYSPARK_DRIVER_PYTHON% $PYSPARK_DRIVER_PYTHON_OPTS
 ) else (
   echo.
   echo WARNING: Running python applications through ./bin/pyspark.cmd is deprecated as of Spark 1.0.
