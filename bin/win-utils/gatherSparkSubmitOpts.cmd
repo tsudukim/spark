@@ -24,12 +24,12 @@ rem NOTE: If you add or remove spark-sumbmit options,
 rem modify NOT ONLY this script but also SparkSubmitArgument.scala
 
 :OptsLoop
-if "%1"=="" (
+if [%1]==[] (
   goto :OptsLoopEnd
 )
-echo %1 | findstr /I " --master --deploy-mode --class --name --jars --py-files --files --conf --properties-file --driver-memory --driver-java-options --driver-library-path --driver-class-path --executor-memory --driver-cores --total-executor-cores --executor-cores --queue --num-executors --archives" >nul
+echo %1 | findstr "\<--master\> \<--deploy-mode\> \<--class\> \<--name\> \<--jars\> \<--py-files\> \<--files\> \<--conf\> \<--properties-file\> \<--driver-memory\> \<--driver-java-options\> \<--driver-library-path\> \<--driver-class-path\> \<--executor-memory\> \<--driver-cores\> \<--total-executor-cores\> \<--executor-cores\> \<--queue\> \<--num-executors\> \<--archives\>" >nul
 if %ERRORLEVEL% equ 0 (
-  if "%2"=="" (
+  if [%2]==[] (
     echo "%1" requires following parameter. >&2
     exit /b 1
   )
@@ -38,7 +38,7 @@ if %ERRORLEVEL% equ 0 (
   shift
   goto :OptsLoop
 )
-echo "%1" | findstr /I " --verbose -v --supervise" >nul
+echo %1 | findstr "\<--verbose\> \<-v\> \<--supervise\>" >nul
 if %ERRORLEVEL% equ 0 (
   set SUBMISSION_OPTS=%SUBMISSION_OPTS% %1
   shift

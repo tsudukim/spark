@@ -62,6 +62,18 @@ if %ERRORLEVEL% equ 1 (
 )
 set PYSPARK_SUBMIT_ARGS=%SUBMISSION_OPTS%
 
+rem For pyspart tests
+if not [%SPARK_TESTING%] == [] (
+  set YARN_CONF_DIR=
+  set HADOOP_CONF_DIR=
+  if not [%PYSPARK_DOC_TEST%] == [] (
+    %PYSPARK_PYTHON% -m doctest %1
+  ) else (
+    %PYSPARK_PYTHON% %1
+  )
+  exit /b 0
+)
+
 echo Running %PYSPARK_PYTHON% with PYTHONPATH=%PYTHONPATH%
 
 rem Check whether the argument is a file
@@ -79,6 +91,7 @@ if [%PYTHON_FILE%] == [] (
   echo Use ./bin/spark-submit ^<python file^>
   echo.
   set primary=%1
+  shift
   call %SPARK_HOME%\bin\win-utils\gatherSparkSubmitOpts.cmd %*
   if %ERRORLEVEL% equ 1 (
     call :usage
