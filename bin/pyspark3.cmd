@@ -56,11 +56,11 @@ rem Determine the Python executable to use in default.
 set DEFAULT_PYTHON=%PYTHON_PATH%
 
 rem Determine the Python executable to use for the driver:
+if [%PYSPARK_DRIVER_PYTHON%] == [] (
+  set PYSPARK_DRIVER_PYTHON=%PYSPARK_PYTHON%
+)
 if [%IPYTHON_OPTS%] == [] if not "%IPYTHON%" == "1" (
-  if [%PYSPARK_PYTHON%] == [] (
-    set PYSPARK_DRIVER_PYTHON=%PYSPARK_PYTHON%
-  ) else (
-    set PYSPARK_DRIVER_PYTHON=%DEFAULT_PYTHON%
+  echo "NULL"
 ) else (
   set PYSPARK_DRIVER_PYTHON_OPTS=%PYSPARK_DRIVER_PYTHON_OPTS% %IPYTHON_OPTS%
 )
@@ -74,15 +74,6 @@ if [%PYSPARK_PYTHON%] == [] (
   )
   set PYSPARK_PYTHON=%DEFAULT_PYTHON%
 )
-if [[ -z "$PYSPARK_PYTHON" ]]; then
-  if [[ $PYSPARK_DRIVER_PYTHON == *ipython* && $DEFAULT_PYTHON != "python2.7" ]]; then
-    echo "IPython requires Python 2.7+; please install python2.7 or set PYSPARK_PYTHON" 1>&2
-    exit 1
-  else
-    PYSPARK_PYTHON="$DEFAULT_PYTHON"
-  fi
-fi
-export PYSPARK_PYTHON
 
 set PYTHONPATH=%FWDIR%python;%PYTHONPATH%
 set PYTHONPATH=%FWDIR%python\lib\py4j-0.8.2.1-src.zip;%PYTHONPATH%
@@ -118,7 +109,7 @@ for /f %%i in ('echo %1^| findstr /R "\.py"') do (
 
 if [%PYTHON_FILE%] == [] (
   set PYSPARK_SHELL=1
-  %PYSPARK_DRIVER_PYTHON% $PYSPARK_DRIVER_PYTHON_OPTS
+  %PYSPARK_DRIVER_PYTHON% %PYSPARK_DRIVER_PYTHON_OPTS%
 ) else (
   echo.
   echo WARNING: Running python applications through ./bin/pyspark.cmd is deprecated as of Spark 1.0.
