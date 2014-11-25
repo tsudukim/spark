@@ -154,13 +154,13 @@ private[history] class FsHistoryProvider(conf: SparkConf) extends ApplicationHis
       var newLastModifiedTime = lastModifiedTime
       val logInfos = logDirs
         .filter { dir =>
-          if (fs.isFile(new Path(dir.getPath(), EventLoggingListener.APPLICATION_COMPLETE))) {
+          //if (fs.isFile(new Path(dir.getPath(), EventLoggingListener.APPLICATION_COMPLETE))) {
             val modTime = getModificationTime(dir)
             newLastModifiedTime = math.max(newLastModifiedTime, modTime)
             modTime > lastModifiedTime
-          } else {
-            false
-          }
+          //} else {
+          //  false
+          //}
         }
         .flatMap { dir =>
           try {
@@ -173,14 +173,15 @@ private[history] class FsHistoryProvider(conf: SparkConf) extends ApplicationHis
               appListener.startTime.getOrElse(-1L),
               appListener.endTime.getOrElse(-1L),
               getModificationTime(dir),
-              appListener.sparkUser.getOrElse(NOT_STARTED)))
+              appListener.sparkUser.getOrElse(NOT_STARTED),
+              !fs.isFile(new Path(dir.getPath(), EventLoggingListener.APPLICATION_COMPLETE))))
           } catch {
             case e: Exception =>
               logInfo(s"Failed to load application log data from $dir.", e)
               None
           }
         }
-        .sortBy { info => -info.endTime }
+        .sortBy { info => (-info.endTime, -info.startTime) }
 
       lastModifiedTime = newLastModifiedTime
 
@@ -251,5 +252,6 @@ private class FsApplicationHistoryInfo(
     startTime: Long,
     endTime: Long,
     lastUpdated: Long,
-    sparkUser: String)
-  extends ApplicationHistoryInfo(id, name, startTime, endTime, lastUpdated, sparkUser)
+    sparkUser: String,
+    incomplete: Boolean = false)
+  extends ApplicationHistoryInfo(id, name, startTime, endTime, lastUpdated, sparkUser, incomplete)
