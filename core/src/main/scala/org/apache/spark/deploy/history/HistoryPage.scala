@@ -54,6 +54,7 @@ private[spark] class HistoryPage(parent: HistoryServer) extends WebUIPage("") {
             if (allApps.size > 0) {
               <h4>
                 Showing {actualFirst + 1}-{last + 1} of {allApps.size}
+                {if (requestedIncomplete) "(incomplete applications)"}
                 <span style="float: right">
                   {if (actualPage > 1) <a href={makePageLink(actualPage - 1, requestedIncomplete)}>&lt;</a>}
                   {if (actualPage < pageCount) <a href={makePageLink(actualPage + 1, requestedIncomplete)}>&gt;</a>}

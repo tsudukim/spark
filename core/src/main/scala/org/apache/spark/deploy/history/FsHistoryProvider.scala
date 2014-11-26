@@ -154,13 +154,9 @@ private[history] class FsHistoryProvider(conf: SparkConf) extends ApplicationHis
       var newLastModifiedTime = lastModifiedTime
       val logInfos = logDirs
         .filter { dir =>
-          //if (fs.isFile(new Path(dir.getPath(), EventLoggingListener.APPLICATION_COMPLETE))) {
-            val modTime = getModificationTime(dir)
-            newLastModifiedTime = math.max(newLastModifiedTime, modTime)
-            modTime > lastModifiedTime
-          //} else {
-          //  false
-          //}
+          val modTime = getModificationTime(dir)
+          newLastModifiedTime = math.max(newLastModifiedTime, modTime)
+          modTime > lastModifiedTime
         }
         .flatMap { dir =>
           try {
