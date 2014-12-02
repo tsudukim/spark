@@ -5,22 +5,20 @@ if ("$env:HIVE_HOME" -ne ""){
   $hive_lib = Join-Path "$env:HIVE_HOME" "lib"
   if (Test-Path $hive_lib){
     Get-ChildItem $hive_lib | ForEach-Object {
-      $env:HADOOP_CLASSPATH = "$env:HADOOP_CLASSPATH" + ":" + "$_"
+      $env:HADOOP_CLASSPATH += ":{1}" -F $env:HADOOP_CLASSPATH, $_
     }
   }
 }
-echo $env:HADOOP_CLASSPATH
 
-$script_dir = Split-Path $script:myInvocation.MyCommand.path -parent
-. (Join-Path $script_dir "sbt-launch-lib.ps1")
+$base_dir = Split-Path $script:myInvocation.MyCommand.path -parent
+. (Join-Path $base_dir "sbt-launch-lib.ps1")
 
 $noshare_opts = "-Dsbt.global.base=project\.sbtboot -Dsbt.boot.directory=project\.boot -Dsbt.ivy.home=project\.ivy"
-$sbt_opts_file = ".sbtopts"
-$sbt_opts_file = "C:\Users\tsudukim\Downloads\AMPCAMP\sbt\conf\sbtopts"
-$etc_sbt_opts_file = "/etc/sbt/sbtopts"
+$sbt_opts_file = "sbtconfig.txt"
+$etc_sbt_opts_file = ""
 
 function usage(){
-  Write-Output @'
+  Write-Host @'
 Usage: $script_name [options]
 
   -h | -help         print this message
@@ -36,6 +34,7 @@ Usage: $script_name [options]
   -no-global         uses global caches, but does not use global ~/.sbt directory.
   -jvm-debug <port>  Turn on JVM debugging, open at the given port.
   -batch             Disable interactive mode
+                     (This is ignored in Windows)
 
   # sbt version (default: from project/build.properties if present, else latest release)
   -sbt-version  <version>   use the specified version of sbt
@@ -49,14 +48,15 @@ Usage: $script_name [options]
   # jvm options and output control
   JAVA_OPTS          environment variable, if unset uses "$java_opts"
   SBT_OPTS           environment variable, if unset uses "$default_sbt_opts"
-  .sbtopts           if this file exists in the current directory, it is
+  sbtconfig.txt      if this file exists in the current directory, it is
                      prepended to the runner args
   /etc/sbt/sbtopts   if this file exists, it is prepended to the runner args
+                     (This is not available in Windows)
   -Dkey=val          pass -Dkey=val directly to the java runtime
   -J-X               pass option -X directly to the java runtime
                      (-J is stripped)
-  -S-X               add -X to sbt's scalacOptions (-J is stripped)
-  -PmavenProfiles     Enable a maven profile for the build.
+  -S-X               add -X to sbt's scalacOptions (-S is stripped)
+  -PmavenProfiles    Enable a maven profile for the build.
 
 In the case of duplicated or conflicting options, the order above
 shows precedence: JAVA_OPTS lowest, command line options highest.
@@ -68,9 +68,9 @@ function process_my_args($_args){
     switch -CaseSensitive ($_args[0]){
       "-no-colors"     {addJava "-Dsbt.log.noformat=true" ; shift $_args 1}
       "-no-share"      {addJava $noshare_opts ; shift $_args 1}
-      "-no-global"     {$a = "-Dsbt.global.base=" + (pwd) + "\project\.sbtboot"; addJava $a; shift $_args 1}
-      "-sbt-boot"      {require_arg "path" $_args; $a="-Dsbt.boot.directory="+$_args[1]; addJava $a; shift $_args 2}
-      "-sbt-dir"       {require_arg "path" $_args; $a="-Dsbt.global.base="+$_args[1]; addJava $a; shift $_args 2}
+      "-no-global"     {$str="-Dsbt.global.base=" + (pwd) + "\project\.sbtboot"; addJava $str; shift $_args 1}
+      "-sbt-boot"      {require_arg "path" $_args; $str="-Dsbt.boot.directory="+$_args[1]; addJava $str; shift $_args 2}
+      "-sbt-dir"       {require_arg "path" $_args; $str="-Dsbt.global.base="+$_args[1]; addJava $str; shift $_args 2}
       "-debug-inc"     {addJava "-Dxsbt.inc.debug=true" ; shift $_args 1}
       "-batch"         {}
 
@@ -91,12 +91,15 @@ function loadConfigFile($file, $_args){
   }
 }
 
-# In powershell, it is difficult to operate $args (which is powershell array) like bash way.
+# In PowerShell, it is difficult to operate $args (which is PowerShell array) like bash way.
 # So, we convert it to List<String> in .NET Framework first.
 $argslist = New-Object 'System.Collections.Generic.List[System.String]'
 
-# if sbtopts files exist, prepend their contents to $argslist so it can be processed by this runner
-if(Test-Path $sbt_opts_file){
+# if sbtconfig.txt files exist, prepend their contents to $argslist so it can be processed by this runner
+if(is_file $etc_sbt_opts_file){
+  loadConfigFile $etc_sbt_opts_file $argslist
+}
+if(is_file $sbt_opts_file){
   loadConfigFile $sbt_opts_file $argslist
 }
 
@@ -104,9 +107,3 @@ $args | ForEach-Object {
   $argslist.Add($_)
 }
 run $argslist
-
-echo " + debug: $debug"
-echo " + verbose: $debug"
-echo " + sbt_mem: $sbt_mem"
-echo " + sbt_create: $sbt_create"
-

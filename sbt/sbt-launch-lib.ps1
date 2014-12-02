@@ -7,18 +7,22 @@ function is_file($path){
   Test-Path $path -PathType Leaf
 }
 
+$java_args = @()
+$sbt_commands = @()
+$maven_profiles = @()
+
 $java_cmd = "java.exe"
 if($null -ne $env:JAVA_HOME){
   $java_cmd_candidate = Join-Path (Join-Path $env:JAVA_HOME "bin") "java.exe"
   if(is_file $java_cmd_candidate){
-    Write-Output "Using %JAVA_HOME% as default JAVA_HOME."
-    Write-Output "Note, this will be overridden by -java-home if it is set."
+    Write-Host "Using %JAVA_HOME% as default JAVA_HOME."
+    Write-Host "Note, this will be overridden by -java-home if it is set."
     $global:java_cmd = $java_cmd_candidate
   }
 }
 
 function echoerr(){
-  Write-Output $args
+  Write-Host $args
 }
 function vlog(){
   if($verbose -eq 1 -or $debug -eq 1){
@@ -34,10 +38,13 @@ function dlog(){
 function web_download($url, $out){
   $result = $false
   try{
-    Invoke-WebRequest -Uri $url -OutFile $out
+    Invoke-WebRequest -Uri $url -OutFile $out -ErrorAction Continue
     $result = $?
-  }catch [Microsoft.PowerShell.Commands.InvokeWebRequestCommand.WebCmdletWebResponseException]{
-    dlog $_
+  }catch [System.Management.Automation.CommandNotFoundException]{
+    # Invoke-WebRequest is available PowerShell 3.0 or over.
+    # If CommandNotFoundException, we use System.Net.WebClient in .NET Framework.
+    (New-Object System.Net.WebClient).DownloadFile($url, $out)
+    $result = $true
   }
   $result
 }
@@ -53,42 +60,52 @@ function acquire_sbt_jar($version){
   if(-not (is_file $sbt_jar)){
     # Download sbt launch jar if it hasn't been downloaded yet
     # Download
-    Write-Output "Attempting to fetch sbt"
+    Write-Host "Attempting to fetch sbt"
     $jar_dl="{0}.part" -F ${jar}
-    $result = $true
+    $result = $false
     if(-not (is_file $jar)){
-      web_download $url1 $jar
+      $result = web_download $url1 $jar
     }
     if(-not (is_file $jar)){
-      web_download $url2 $jar
+      $result = web_download $url2 $jar
     }
     if(-not (is_file $jar)){
       # We failed to download
-      Write-Output "Our attempt to download sbt locally to $jar failed. Please install sbt manually from http://www.scala-sbt.org/\n"
+      Write-Host "Our attempt to download sbt locally to $jar failed. Please install sbt manually from http://www.scala-sbt.org/"
       exit
     }
-    Write-Output "Launching sbt from $jar"
+    Write-Host "Launching sbt from $jar"
   }
   $true
 }
 
 function execRunner($cmd, $cmdargs){
-  echo $cmd $cmdargs
-  Start-Process $cmd $cmdargs -Wait -NoNewWindow
+  vlog "* With %SBT_MAVEN_PROFILES% : " $env:SBT_MAVEN_PROFILES
+  vlog "* Executing... : " $cmd $cmdargs
+  try{
+    Start-Process $cmd $cmdargs -Wait -NoNewWindow
+  }catch [InvalidOperationException]{
+    Write-Host ("> " + $_.ToString())
+    Write-Host (">> " + $_.InvocationInfo.PositionMessage)
+    Write-Host ("'{0}' cannot be executed." -F $cmd)
+  }
 }
 
 function addJava($param){
   dlog "[addJava] arg = $param"
-  $global:java_args = $global:java_args,$param -join " "
+  $global:java_args += $param
 }
 function enableProfile($param){
   dlog "[enableProfile] arg = $param"
-  $global:maven_profiles = $global:maven_profiles,$param -join " "
-  $env:SBT_MAVEN_PROFILES=$global:maven_profiles
+  $global:maven_profiles += $param
+  $env:SBT_MAVEN_PROFILES=($global:maven_profiles -join " ")
+}
+function addSbt($param){
+  dlog "[addSbt] arg = $param"
+  $global:sbt_commands += $param
 }
 function addResidual($param){
   dlog "[residual] arg = $param"
-  #$global:residual_args = $global:residual_args,$param -join " "
   $global:residual_argslist.Add($param)
 }
 function addDebugger($param){
@@ -124,23 +141,22 @@ function process_args($_args){
       "^-v|^-verbose"  {$global:verbose=1; shift $_args 1}
       "^-d|^-debug"    {$global:debug=1; shift $_args 1}
 
-      "^-ivy"          {require_arg "path" $_args; $a="-Dsbt.ivy.home="+$_args[1]; addJava $a; shift $_args 2}
+      "^-ivy"          {require_arg "path" $_args; $str="-Dsbt.ivy.home="+$_args[1]; addJava $str; shift $_args 2}
       "^-mem"          {require_arg "integer" $_args; $global:sbt_mem=$_args[1]; shift $_args 2}
-      "^-jvm\-debug"   {require_arg "port" $_args; $a=$_args[1]; addDebugger $a; shift $_args 2}
+      "^-jvm\-debug"   {require_arg "port" $_args; $str=$_args[1]; addDebugger $str; shift $_args 2}
       "^-batch"        {}
 
       "^-sbt\-jar"     {require_arg "path" $_args; $global:sbt_jar=$_args[1]; shift $_args 2}
       "^-sbt\-version" {require_arg "version" $_args; $global:sbt_version=$_args[1]; shift $_args 2}
       "^-java\-home"   {require_arg "path" $_args; $global:java_cmd=$_args[1]+"\bin\java"; $env:JAVA_HOME=$_args[1]; shift $_args 2}
 
-      "^-D.*"          {$a=$_args[0]; addJava $a; shift $_args 1}
-      "^-J.*"          {$a=$_args[0].Substring(2); addJava $a; shift $_args 1}
-      "^-P.*"          {$a=$_args[0]; enableProfile $a; shift $_args 1}
+      "^-D.*"          {$str=$_args[0]; addJava $str; shift $_args 1}
+      "^-J.*"          {$str=$_args[0].Substring(2); addJava $str; shift $_args 1}
+      "^-P.*"          {$str=$_args[0]; enableProfile $str; shift $_args 1}
       default          {addResidual $_args[0]; shift $_args 1}
     }
   }
 
-  $tmp_argslist = $residual_argslist.Clone()
   $tmp_argslist = New-Object 'System.Collections.Generic.List[System.String]'
   $tmp_argslist.AddRange($residual_argslist)
   $residual_argslist.Clear()
@@ -149,7 +165,6 @@ function process_args($_args){
   }catch [System.Management.Automation.CommandNotFoundException]{
     $global:residual_argslist = $tmp_argslist
   }
-  $global:residual_args = $residual_argslist -join " "
 }
 
 function run($_args){
@@ -167,12 +182,12 @@ function run($_args){
 
   # run sbt
   $java_cmdargs = "{0} {1} {2} {3} {4} {5} {6}" -F `
-     ${SBT_OPTS:-$default_sbt_opts}, `
+     $env:SBT_OPTS, `
      (get_mem_opts $sbt_mem).ToString(), `
      $java_opts, `
-     $java_args, `
+     ($java_args -join " "), `
      "-jar $sbt_jar", `
-     $sbt_commands, `
-     $residual_args
+     ($sbt_commands -join " "), `
+     ($residual_argslist -join " ")
   execRunner $java_cmd $java_cmdargs
 }
