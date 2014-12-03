@@ -10,7 +10,8 @@ if ("$env:HIVE_HOME" -ne ""){
   }
 }
 
-$base_dir = Split-Path $script:myInvocation.MyCommand.path -parent
+$base_dir = Split-Path $script:myInvocation.MyCommand.path -Parent
+$script_name = Split-Path $script:myInvocation.MyCommand.path -Leaf
 . (Join-Path $base_dir "sbt-launch-lib.ps1")
 
 $noshare_opts = "-Dsbt.global.base=project\.sbtboot -Dsbt.boot.directory=project\.boot -Dsbt.ivy.home=project\.ivy"
@@ -18,7 +19,7 @@ $sbt_opts_file = "sbtconfig.txt"
 $etc_sbt_opts_file = ""
 
 function usage(){
-  Write-Host @'
+  Write-Host @"
 Usage: $script_name [options]
 
   -h | -help         print this message
@@ -29,7 +30,7 @@ Usage: $script_name [options]
   -sbt-dir   <path>  path to global settings/plugins directory (default: ~/.sbt)
   -sbt-boot  <path>  path to shared boot directory (default: ~/.sbt/boot in 0.11 series)
   -ivy       <path>  path to local Ivy repository (default: ~/.ivy2)
-  -mem    <integer>  set memory options (default: $sbt_mem, which is $(get_mem_opts $sbt_mem))
+  -mem    <integer>  set memory options (default: $sbt_mem, which is "$(get_mem_opts $sbt_mem)")
   -no-share          use all local caches; no sharing
   -no-global         uses global caches, but does not use global ~/.sbt directory.
   -jvm-debug <port>  Turn on JVM debugging, open at the given port.
@@ -42,7 +43,7 @@ Usage: $script_name [options]
   -sbt-rc                   use an RC version of sbt
   -sbt-snapshot             use a snapshot version of sbt
 
-  # java version (default: java from PATH, currently $(java -version 2>&1 | grep version))
+  # java version (default: java from PATH, or JAVA_HOME)
   -java-home <path>         alternate JAVA_HOME
 
   # jvm options and output control
@@ -60,19 +61,19 @@ Usage: $script_name [options]
 
 In the case of duplicated or conflicting options, the order above
 shows precedence: JAVA_OPTS lowest, command line options highest.
-'@
+"@
 }
 
 function process_my_args($_args){
   while ($_args.Count -ne 0){
     switch -CaseSensitive ($_args[0]){
-      "-no-colors"     {addJava "-Dsbt.log.noformat=true" ; shift $_args 1}
-      "-no-share"      {addJava $noshare_opts ; shift $_args 1}
+      "-no-colors"     {addJava "-Dsbt.log.noformat=true"; shift $_args 1}
+      "-no-share"      {addJava $noshare_opts; shift $_args 1}
       "-no-global"     {$str="-Dsbt.global.base=" + (pwd) + "\project\.sbtboot"; addJava $str; shift $_args 1}
       "-sbt-boot"      {require_arg "path" $_args; $str="-Dsbt.boot.directory="+$_args[1]; addJava $str; shift $_args 2}
       "-sbt-dir"       {require_arg "path" $_args; $str="-Dsbt.global.base="+$_args[1]; addJava $str; shift $_args 2}
-      "-debug-inc"     {addJava "-Dxsbt.inc.debug=true" ; shift $_args 1}
-      "-batch"         {}
+      "-debug-inc"     {addJava "-Dxsbt.inc.debug=true"; shift $_args 1}
+      "-batch"         {Write-Host "-batch is ignored in Windows"; shift $_args 1}
 
       "-sbt-create"    {$global:sbt_create=1; shift $_args 1}
 

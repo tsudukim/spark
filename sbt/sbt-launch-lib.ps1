@@ -1,5 +1,3 @@
-$residual_argslist = New-Object 'System.Collections.Generic.List[System.String]'
-
 function is_file($path){
   if($null -eq $path -or $path.Length -eq 0){
     return $false
@@ -7,6 +5,7 @@ function is_file($path){
   Test-Path $path -PathType Leaf
 }
 
+$residual_argslist = New-Object 'System.Collections.Generic.List[System.String]'
 $java_args = @()
 $sbt_commands = @()
 $maven_profiles = @()
@@ -41,7 +40,7 @@ function web_download($url, $out){
     Invoke-WebRequest -Uri $url -OutFile $out -ErrorAction Continue
     $result = $?
   }catch [System.Management.Automation.CommandNotFoundException]{
-    # Invoke-WebRequest is available PowerShell 3.0 or over.
+    # Invoke-WebRequest is available with PowerShell 3.0 or over.
     # If CommandNotFoundException, we use System.Net.WebClient in .NET Framework.
     (New-Object System.Net.WebClient).DownloadFile($url, $out)
     $result = $true
@@ -59,15 +58,16 @@ function acquire_sbt_jar($version){
 
   if(-not (is_file $sbt_jar)){
     # Download sbt launch jar if it hasn't been downloaded yet
-    # Download
     Write-Host "Attempting to fetch sbt"
     $jar_dl="{0}.part" -F ${jar}
     $result = $false
     if(-not (is_file $jar)){
-      $result = web_download $url1 $jar
+      $result = web_download $url1 $jar_dl
+      Move-Item $jar_dl $jar
     }
     if(-not (is_file $jar)){
-      $result = web_download $url2 $jar
+      $result = web_download $url2 $jar_dl
+      Move-Item $jar_dl $jar
     }
     if(-not (is_file $jar)){
       # We failed to download
@@ -80,8 +80,8 @@ function acquire_sbt_jar($version){
 }
 
 function execRunner($cmd, $cmdargs){
-  vlog "* With %SBT_MAVEN_PROFILES% : " $env:SBT_MAVEN_PROFILES
-  vlog "* Executing... : " $cmd $cmdargs
+  vlog "# With %SBT_MAVEN_PROFILES% : " $env:SBT_MAVEN_PROFILES
+  vlog "# Executing command line: " $cmd $cmdargs
   try{
     Start-Process $cmd $cmdargs -Wait -NoNewWindow
   }catch [InvalidOperationException]{
@@ -115,6 +115,7 @@ function addDebugger($param){
 # a ham-fisted attempt to move some memory settings in concert
 # so they need not be dicked around with individually.
 function get_mem_opts([int]$mem=2048){
+  if($mem -eq 0){ $mem = 2048 }
   $perm = $mem / 4
   if($perm -lt 256){ $perm = 256 }
   if($perm -gt 4096){ $perm = 4096 }
@@ -144,7 +145,7 @@ function process_args($_args){
       "^-ivy"          {require_arg "path" $_args; $str="-Dsbt.ivy.home="+$_args[1]; addJava $str; shift $_args 2}
       "^-mem"          {require_arg "integer" $_args; $global:sbt_mem=$_args[1]; shift $_args 2}
       "^-jvm\-debug"   {require_arg "port" $_args; $str=$_args[1]; addDebugger $str; shift $_args 2}
-      "^-batch"        {}
+      "-batch"         {Write-Host "-batch is ignored in Windows"; shift $_args 1}
 
       "^-sbt\-jar"     {require_arg "path" $_args; $global:sbt_jar=$_args[1]; shift $_args 2}
       "^-sbt\-version" {require_arg "version" $_args; $global:sbt_version=$_args[1]; shift $_args 2}
@@ -163,6 +164,7 @@ function process_args($_args){
   try{
     process_my_args $tmp_argslist
   }catch [System.Management.Automation.CommandNotFoundException]{
+    # If CommandNotFoundException, perhaps "process_my_args" function doesn't exist.
     $global:residual_argslist = $tmp_argslist
   }
 }
