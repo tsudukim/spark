@@ -32,6 +32,8 @@ import org.apache.hadoop.security.Credentials
 import org.apache.hadoop.security.UserGroupInformation
 import org.apache.hadoop.yarn.conf.YarnConfiguration
 import org.apache.hadoop.yarn.api.records.ApplicationAccessType
+import org.apache.hadoop.yarn.api.ApplicationConstants
+import org.apache.hadoop.yarn.api.ApplicationConstants.Environment
 import org.apache.hadoop.yarn.util.RackResolver
 import org.apache.hadoop.conf.Configuration
 
@@ -112,7 +114,7 @@ object YarnSparkHadoopUtil {
    * If the map already contains this key, append the value to the existing value instead.
    */
   def addPathToEnvironment(env: HashMap[String, String], key: String, value: String): Unit = {
-    val newValue = if (env.contains(key)) { env(key) + File.pathSeparator + value } else value
+    val newValue = if (env.contains(key)) { env(key) + ApplicationConstants.CLASS_PATH_SEPARATOR  + value } else value
     env.put(key, newValue)
   }
 
@@ -223,4 +225,22 @@ object YarnSparkHadoopUtil {
     )
   }
 
+  /**
+   * Expand environment variable using Yarn API.
+   * If environment.$$() is implemented, return the result of it.
+   * Otherwise, return the result of environment.$()
+   * Note: $$() is added in Hadoop 2.4.
+   */
+  def expandEnvironment(environment: Environment): String = {
+    var result = environment.$()
+    // If method $$() is implemented, replace result with it.
+    try {
+      // We use reflection in order not to fail building with Hadoop 2.3 or before.
+      val method = classOf[Environment].getMethod("$$")
+      result = method.invoke(environment).asInstanceOf[String]
+    } catch {
+      case e: NoSuchMethodException =>
+    }
+    result
+  }
 }
