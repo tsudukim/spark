@@ -114,7 +114,7 @@ object YarnSparkHadoopUtil {
    * If the map already contains this key, append the value to the existing value instead.
    */
   def addPathToEnvironment(env: HashMap[String, String], key: String, value: String): Unit = {
-    val newValue = if (env.contains(key)) { env(key) + ApplicationConstants.CLASS_PATH_SEPARATOR  + value } else value
+    val newValue = if (env.contains(key)) { env(key) + getClassPathSeparator  + value } else value
     env.put(key, newValue)
   }
 
@@ -241,6 +241,13 @@ object YarnSparkHadoopUtil {
     } catch {
       case e: NoSuchMethodException =>
     }
+    result
+  }
+
+  def getClassPathSeparator(): String = {
+    var result = File.pathSeparator
+    val field = classOf[ApplicationConstants].getField("CLASS_PATH_SEPARATOR")
+    result = field.get(null).asInstanceOf[String]
     result
   }
 }
