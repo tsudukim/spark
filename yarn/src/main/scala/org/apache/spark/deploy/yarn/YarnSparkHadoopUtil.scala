@@ -233,13 +233,15 @@ object YarnSparkHadoopUtil {
    */
   def expandEnvironment(environment: Environment): String = {
     var result = environment.$()
-    try {
-      // We use reflection in order not to fail building with Hadoop 2.3 or before.
-      val method = classOf[Environment].getMethod("$$")
+
+    // We use reflection in order not to fail building with Hadoop 2.3 or before.
+    val clazz = classOf[Environment]
+    val name = "$$"
+    if (clazz.getMethods().exists(_.getName == name)){
+      val method = clazz.getMethod(name)
       result = method.invoke(environment).asInstanceOf[String]
-    } catch {
-      case e: NoSuchMethodException =>
     }
+
     result
   }
 
@@ -251,13 +253,15 @@ object YarnSparkHadoopUtil {
    */
   def getClassPathSeparator(): String = {
     var result = File.pathSeparator
-    try {
-      // We use reflection in order not to fail building with Hadoop 2.3 or before.
-      val field = classOf[ApplicationConstants].getField("CLASS_PATH_SEPARATOR")
+
+    // We use reflection in order not to fail building with Hadoop 2.3 or before.
+    val clazz = classOf[ApplicationConstants]
+    val name = "CLASS_PATH_SEPARATOR"
+    if (clazz.getFields().exists(_.getName == name)){
+      val field = clazz.getField(name)
       result = field.get(null).asInstanceOf[String]
-    } catch {
-      case e: NoSuchFieldException =>
     }
+
     result
   }
 }
