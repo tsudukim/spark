@@ -233,7 +233,6 @@ object YarnSparkHadoopUtil {
    */
   def expandEnvironment(environment: Environment): String = {
     var result = environment.$()
-    // If method $$() is implemented, replace result with it.
     try {
       // We use reflection in order not to fail building with Hadoop 2.3 or before.
       val method = classOf[Environment].getMethod("$$")
@@ -244,10 +243,21 @@ object YarnSparkHadoopUtil {
     result
   }
 
+  /**
+   * Get class path separator using Yarn API.
+   * If ApplicationConstants.CLASS_PATH_SEPARATOR is implemented, return it.
+   * Otherwise, return File.pathSeparator
+   * Note: File.pathSeparator is added in Hadoop 2.4.
+   */
   def getClassPathSeparator(): String = {
     var result = File.pathSeparator
-    val field = classOf[ApplicationConstants].getField("CLASS_PATH_SEPARATOR")
-    result = field.get(null).asInstanceOf[String]
+    try {
+      // We use reflection in order not to fail building with Hadoop 2.3 or before.
+      val field = classOf[ApplicationConstants].getField("CLASS_PATH_SEPARATOR")
+      result = field.get(null).asInstanceOf[String]
+    } catch {
+      case e: NoSuchFieldException =>
+    }
     result
   }
 }
