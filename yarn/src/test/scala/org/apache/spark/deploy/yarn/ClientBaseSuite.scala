@@ -23,6 +23,7 @@ import java.net.URI
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.mapreduce.MRJobConfig
+import org.apache.hadoop.util.Shell
 import org.apache.hadoop.yarn.api.ApplicationConstants.Environment
 import org.apache.hadoop.yarn.api.records._
 import org.apache.hadoop.yarn.conf.YarnConfiguration
@@ -98,8 +99,13 @@ class ClientBaseSuite extends FunSuite with Matchers {
         cp should not contain (uri.getPath())
       }
     })
-    cp should contain (Environment.PWD.$())
-    cp should contain (s"${Environment.PWD.$()}${File.separator}*")
+    if(Shell.WINDOWS && classOf[Environment].getMethods().exists("$$")) {
+      cp should contain("%PWD%")
+      cp should contain(s"%PWD%${File.separator}*")
+    }else{
+      cp should contain(Environment.PWD.$())
+      cp should contain(s"${Environment.PWD.$()}${File.separator}*")
+    }
     cp should not contain (ClientBase.SPARK_JAR)
     cp should not contain (ClientBase.APP_JAR)
   }

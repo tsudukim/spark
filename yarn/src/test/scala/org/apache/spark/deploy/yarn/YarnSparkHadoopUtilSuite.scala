@@ -20,7 +20,10 @@ package org.apache.spark.deploy.yarn
 import java.io.{File, IOException}
 
 import com.google.common.io.{ByteStreams, Files}
+import org.apache.hadoop.yarn.api.ApplicationConstants
+import org.apache.hadoop.yarn.api.ApplicationConstants.Environment
 import org.apache.hadoop.yarn.conf.YarnConfiguration
+import org.apache.hadoop.util.Shell
 import org.scalatest.{FunSuite, Matchers}
 
 import org.apache.hadoop.yarn.api.records.ApplicationAccessType
@@ -147,5 +150,23 @@ class YarnSparkHadoopUtilSuite extends FunSuite with Matchers with Logging {
       }
     }
 
+  }
+
+  test("test expandEnvironment result") {
+    val target = Environment.PWD
+    var expect = "$" + target
+    if (Shell.WINDOWS && classOf[Environment].getMethods().exists("$$")) {
+      expect = "%" + target + "%"
+    }
+    YarnSparkHadoopUtil.expandEnvironment(target) should be expect
+  }
+
+  test("test getClassPathSeparator result") {
+    var expect = ":"
+    if (Shell.WINDOWS &&
+      classOf[ApplicationConstants].getFields().exists("CLASS_PATH_SEPARATOR")) {
+      expect = ";"
+    }
+    YarnSparkHadoopUtil.getClassPathSeparator() should be expect
   }
 }
