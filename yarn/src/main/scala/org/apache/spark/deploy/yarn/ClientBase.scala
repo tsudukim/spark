@@ -710,7 +710,9 @@ private[spark] object ClientBase extends Logging {
     }
 
     // Append all jar files under the working directory to the classpath.
-    addClasspathEntry(Environment.PWD + Path.SEPARATOR + "*", env)
+    addClasspathEntry(
+      YarnSparkHadoopUtil.expandEnvironment(Environment.PWD) + Path.SEPARATOR + "*", env
+    )
   }
 
   /**
