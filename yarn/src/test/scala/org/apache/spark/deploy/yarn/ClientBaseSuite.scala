@@ -99,7 +99,7 @@ class ClientBaseSuite extends FunSuite with Matchers {
         cp should not contain (uri.getPath())
       }
     })
-    if(Shell.WINDOWS && classOf[Environment].getMethods().exists("$$")) {
+    if(Shell.WINDOWS && classOf[Environment].getMethods().exists(_.getName == "$$")) {
       cp should contain("%PWD%")
       cp should contain(s"%PWD%${File.separator}*")
     }else{
@@ -230,7 +230,7 @@ class ClientBaseSuite extends FunSuite with Matchers {
 
   def newEnv = MutableHashMap[String, String]()
 
-  def classpath(env: MutableHashMap[String, String]) = env(Environment.CLASSPATH.name).split(":|;")
+  def classpath(env: MutableHashMap[String, String]) = env(Environment.CLASSPATH.name).split(":|;|<CPS>")
 
   def flatten(a: Option[Seq[String]], b: Option[Seq[String]]) = (a ++ b).flatten.toArray
 
