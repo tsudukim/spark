@@ -155,7 +155,9 @@ class YarnSparkHadoopUtilSuite extends FunSuite with Matchers with Logging {
   test("test expandEnvironment result") {
     val target = Environment.PWD
     var expect = "$" + target
-    if (Shell.WINDOWS && classOf[Environment].getMethods().exists(_.getName == "$$")) {
+    if (classOf[Environment].getMethods().exists(_.getName == "$$")) {
+      expect = "{{" + target + "}}"
+    } else if (Shell.WINDOWS) {
       expect = "%" + target + "%"
     }
     YarnSparkHadoopUtil.expandEnvironment(target) should be (expect)
@@ -163,8 +165,9 @@ class YarnSparkHadoopUtilSuite extends FunSuite with Matchers with Logging {
 
   test("test getClassPathSeparator result") {
     var expect = ":"
-    if (Shell.WINDOWS &&
-      classOf[ApplicationConstants].getFields().exists(_.getName == "CLASS_PATH_SEPARATOR")) {
+    if (classOf[ApplicationConstants].getFields().exists(_.getName == "CLASS_PATH_SEPARATOR")) {
+      expect = "<CPS>"
+    } else if (Shell.WINDOWS) {
       expect = ";"
     }
     YarnSparkHadoopUtil.getClassPathSeparator() should be (expect)

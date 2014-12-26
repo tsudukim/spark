@@ -90,7 +90,7 @@ class ClientBaseSuite extends FunSuite with Matchers {
 
     ClientBase.populateClasspath(args, conf, sparkConf, env)
 
-    val cp = env("CLASSPATH").split(File.pathSeparator)
+    val cp = env("CLASSPATH").split(":|;|<CPS>")
     s"$SPARK,$USER,$ADDED".split(",").foreach({ entry =>
       val uri = new URI(entry)
       if (ClientBase.LOCAL_SCHEME.equals(uri.getScheme())) {
@@ -99,10 +99,13 @@ class ClientBaseSuite extends FunSuite with Matchers {
         cp should not contain (uri.getPath())
       }
     })
-    if(Shell.WINDOWS && classOf[Environment].getMethods().exists(_.getName == "$$")) {
+    if (classOf[Environment].getMethods().exists(_.getName == "$$")) {
+      cp should contain("{{PWD}}")
+      cp should contain(s"{{PWD}}${File.separator}*")
+    } else if (Shell.WINDOWS) {
       cp should contain("%PWD%")
       cp should contain(s"%PWD%${File.separator}*")
-    }else{
+    } else {
       cp should contain(Environment.PWD.$())
       cp should contain(s"${Environment.PWD.$()}${File.separator}*")
     }
