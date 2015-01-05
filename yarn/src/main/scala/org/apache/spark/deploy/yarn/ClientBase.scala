@@ -321,7 +321,8 @@ private[spark] trait ClientBase extends Logging {
     javaOpts += "-Xmx" + args.amMemory + "m"
 
     val tmpDir = new Path(
-      YarnSparkHadoopUtil.expandEnvironment(Environment.PWD), YarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR
+      YarnSparkHadoopUtil.expandEnvironment(Environment.PWD),
+      YarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR
     )
     javaOpts += "-Djava.io.tmpdir=" + tmpDir
 
