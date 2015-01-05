@@ -101,10 +101,10 @@ class ClientBaseSuite extends FunSuite with Matchers {
     })
     if (classOf[Environment].getMethods().exists(_.getName == "$$")) {
       cp should contain("{{PWD}}")
-      cp should contain(s"{{PWD}}${File.separator}*")
+      cp should contain(s"{{PWD}}${Path.separator}*")
     } else if (Shell.WINDOWS) {
       cp should contain("%PWD%")
-      cp should contain(s"%PWD%${File.separator}*")
+      cp should contain(s"%PWD%${Path.separator}*")
     } else {
       cp should contain(Environment.PWD.$())
       cp should contain(s"${Environment.PWD.$()}${File.separator}*")
