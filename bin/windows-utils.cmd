@@ -24,7 +24,7 @@ rem NOTE: If you add or remove spark-sumbmit options,
 rem modify NOT ONLY this script but also SparkSubmitArgument.scala
 
 :OptsLoop
-if "x%1"=="x" (
+if "%~1"=="" (
   goto :OptsLoopEnd
 )
 
@@ -37,7 +37,7 @@ SET opts="%opts:~1,-1% \<--proxy-user\>"
 
 echo %1 | findstr %opts% >nul
 if %ERRORLEVEL% equ 0 (
-  if "x%2"=="x" (
+  if "%~2"=="" (
     echo "%1" requires an argument. >&2
     exit /b 1
   )
